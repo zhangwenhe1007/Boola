@@ -1,0 +1,26 @@
+# FastAPI
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database
+asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.25
+pgvector>=0.2.4
+psycopg2-binary>=2.9.9
+greenlet>=3.0.0
+
+# LLM
+openai>=1.10.0  # For OpenAI-compatible vLLM API
+httpx>=0.26.0
+
+# RAG
+sentence-transformers>=2.3.0
+rank-bm25>=0.2.2
+numpy>=1.26.0
+
+# Utils
+python-dotenv>=1.0.0
+aiofiles>=23.2.1

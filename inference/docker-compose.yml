@@ -1,0 +1,62 @@
+version: '3.8'
+
+# vLLM inference server for Boola
+# Requires NVIDIA GPU with CUDA support
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: boola-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      # Cache models to avoid re-downloading
+      - vllm_cache:/root/.cache/huggingface
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Default: Qwen2.5-14B with AWQ quantization (~10GB VRAM)
+    command: >
+      --model Qwen/Qwen2.5-14B-Instruct-AWQ
+      --quantization awq
+      --max-model-len 4096
+      --gpu-memory-utilization 0.9
+      --dtype auto
+
+  # Alternative: Smaller model for testing (~6GB VRAM)
+  vllm-small:
+    image: vllm/vllm-openai:latest
+    container_name: boola-vllm-small
+    runtime: nvidia
+    profiles: ["small"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - vllm_cache:/root/.cache/huggingface
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: >
+      --model Qwen/Qwen2.5-7B-Instruct-AWQ
+      --quantization awq
+      --max-model-len 4096
+      --gpu-memory-utilization 0.9
+      --dtype auto
+
+volumes:
+  vllm_cache:

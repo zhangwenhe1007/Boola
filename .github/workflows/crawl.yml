@@ -1,0 +1,74 @@
+name: Crawl Yale Websites
+
+on:
+  # Run weekly on Sundays at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * 0'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      sites:
+        description: 'Sites to crawl (comma-separated, or "all")'
+        required: false
+        default: 'all'
+      max_pages:
+        description: 'Max pages per site'
+        required: false
+        default: '50'
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd crawler
+          pip install -r requirements.txt
+
+      - name: Run crawler
+        run: |
+          cd crawler
+
+          # Determine sites to crawl
+          if [ "${{ github.event.inputs.sites }}" = "all" ] || [ -z "${{ github.event.inputs.sites }}" ]; then
+            SITES_ARG=""
+          else
+            SITES_ARG="--sites ${{ github.event.inputs.sites }}"
+          fi
+
+          # Determine max pages
+          MAX_PAGES="${{ github.event.inputs.max_pages }}"
+          if [ -z "$MAX_PAGES" ]; then
+            MAX_PAGES="50"
+          fi
+
+          python -m spiders.yale_crawler \
+            $SITES_ARG \
+            --max-pages $MAX_PAGES \
+            --max-depth 2 \
+            --output crawled_data.json
+
+      - name: Upload crawled data
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawled-pages-${{ github.run_id }}
+          path: crawler/crawled_data.json
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## Crawl Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          PAGES=$(cat crawler/crawled_data.json | python -c "import sys, json; print(len(json.load(sys.stdin)))")
+          echo "- **Pages crawled**: $PAGES" >> $GITHUB_STEP_SUMMARY
+          echo "- **Output file**: crawled_data.json" >> $GITHUB_STEP_SUMMARY

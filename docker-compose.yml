@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: boola-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: boola
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: boola-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # vLLM inference server (requires NVIDIA GPU)
+  # Start with: docker-compose --profile gpu up vllm
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: boola-vllm
+    profiles: ["gpu"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - vllm_cache:/root/.cache/huggingface
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: >
+      --model Qwen/Qwen2.5-14B-Instruct-AWQ
+      --quantization awq
+      --max-model-len 4096
+      --gpu-memory-utilization 0.9
+      --dtype auto
+
+volumes:
+  postgres_data:
+  redis_data:
+  vllm_cache:
